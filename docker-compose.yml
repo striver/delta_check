@@ -1,0 +1,16 @@
+services:
+  elixir:
+    build:
+      context: "."
+    environment:
+      - "PGDATABASE=delta_check"
+      - "PGHOST=postgres"
+      - "PGPASSWORD=password"
+      - "PGUSER=postgres"
+    volumes:
+      - ".:/elixir"
+  postgres:
+    environment:
+      - "POSTGRES_PASSWORD=password"
+    image: "postgres:15.1-bullseye"
+version: "3"
