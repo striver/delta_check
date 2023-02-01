@@ -139,6 +139,79 @@ defmodule DeltaCheckTest do
           )
       )
     end
+
+    test "unordered snapshots" do
+      # Enforce HAMT maps.
+      key_count = 33
+
+      schemas =
+        for n <- 1..key_count do
+          # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
+          :"Elixir.DeltaCheck.TestSchemas.OrderText#{Integer.to_string(n) |> String.pad_leading(2, "0")}"
+        end
+
+      Enum.each(schemas, fn schema ->
+        Module.create(
+          schema,
+          quote do
+            use Ecto.Schema
+
+            schema "table" do
+              field(:text, :string)
+            end
+          end,
+          Macro.Env.location(__ENV__)
+        )
+      end)
+
+      ops =
+        Enum.into(schemas, [], fn schema ->
+          {
+            schema,
+            %{
+              deletes: Enum.map(1..33, &TestRepo.load(schema, %{id: &1, text: "foo"})),
+              inserts: Enum.map(34..66, &TestRepo.load(schema, %{id: &1, text: "foo"})),
+              updates: Enum.map(67..99, &TestRepo.load(schema, %{id: &1, text: "foo"}))
+            }
+          }
+        end)
+
+      assert(
+        compare(
+          Enum.into(ops, %{}, fn {schema, %{deletes: deletes, updates: updates}} ->
+            {
+              schema,
+              Map.merge(
+                Enum.into(deletes, %{}, &{&1.id, &1}),
+                Enum.into(updates, %{}, &{&1.id, &1})
+              )
+            }
+          end),
+          Enum.into(ops, %{}, fn {schema, %{inserts: inserts, updates: updates}} ->
+            {
+              schema,
+              Map.merge(
+                Enum.into(inserts, %{}, &{&1.id, &1}),
+                Enum.into(updates, %{}, &{&1.id, Map.put(&1, :text, "bar")})
+              )
+            }
+          end)
+        ) ==
+          Enum.concat([
+            Enum.flat_map(ops, fn {_, %{inserts: inserts}} -> inserts end)
+            |> Enum.map(&{:insert, &1}),
+            Enum.flat_map(ops, fn {_, %{updates: updates}} -> updates end)
+            |> Enum.map(&{:update, {Map.put(&1, :text, "bar"), [text: {"foo", "bar"}]}}),
+            Enum.flat_map(ops, fn {_, %{deletes: deletes}} -> deletes end)
+            |> Enum.map(&{:delete, &1})
+          ])
+      )
+
+      Enum.each(schemas, fn schema ->
+        :code.delete(schema)
+        :code.purge(schema)
+      end)
+    end
   end
 
   describe "get_schemas" do
@@ -273,10 +346,10 @@ defmodule DeltaCheckTest do
 
     @tag :benchmark
     test "benchmark" do
-      # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
       schema_count = 100
+      # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
       schemas = for n <- 1..schema_count, do: :"Elixir.DeltaCheck.TestSchemas.BenchmarkText#{n}"
-      text = for _ <- 1..1024, do: "a", into: ""
+      text = for _ <- 1..1000, do: "a", into: ""
       texts = for _ <- 1..10, do: [text: text]
 
       Enum.each(schemas, fn schema ->

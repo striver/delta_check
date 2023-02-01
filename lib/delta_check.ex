@@ -3,7 +3,6 @@ defmodule DeltaCheck do
   TODO
   """
 
-  import Ecto.Query
   import ExUnit.Assertions
 
   defmacro assert_changes(pattern, opts \\ [], do: block) do
@@ -40,58 +39,45 @@ defmodule DeltaCheck do
   end
 
   def compare(snapshot1, snapshot2) do
-    Enum.flat_map(
+    %{deletes: deletes, inserts: inserts, updates: updates} =
       Map.keys(snapshot1)
       |> MapSet.new()
       |> MapSet.union(
         Map.keys(snapshot2)
         |> MapSet.new()
-      ),
-      fn schema ->
-        compare(
-          schema,
-          Map.get(snapshot1, schema, %{}),
-          Map.get(snapshot2, schema, %{})
-        )
-      end
-    )
-  end
+      )
+      |> Enum.sort()
+      |> Enum.reduce(
+        %{deletes: [], inserts: [], updates: []},
+        fn schema, ops ->
+          %{deletes: deletes, inserts: inserts, updates: updates} =
+            compare_schema(
+              schema,
+              Map.get(snapshot1, schema, %{}),
+              Map.get(snapshot2, schema, %{})
+            )
 
-  def compare(schema, snapshot1, snapshot2) do
-    ids_before = Map.keys(snapshot1) |> MapSet.new()
-    ids_after = Map.keys(snapshot2) |> MapSet.new()
+          Map.update!(ops, :deletes, &[deletes | &1])
+          |> Map.update!(:inserts, &[inserts | &1])
+          |> Map.update!(:updates, &[updates | &1])
+        end
+      )
 
     Enum.concat([
-      MapSet.difference(ids_after, ids_before)
-      |> Enum.map(fn id ->
-        {:insert, snapshot2[id]}
-      end),
-      MapSet.intersection(ids_before, ids_after)
-      |> Enum.filter(fn id ->
-        snapshot1[id] != snapshot2[id]
-      end)
-      |> Enum.map(fn id ->
-        changed =
-          schema.__schema__(:fields)
-          |> Enum.filter(fn field ->
-            Map.get(snapshot1[id], field) != Map.get(snapshot2[id], field)
-          end)
-
-        {
-          :update,
-          {
-            snapshot2[id],
-            Enum.map(changed, fn field ->
-              {field, {Map.get(snapshot1[id], field), Map.get(snapshot2[id], field)}}
-            end)
-          }
-        }
-      end),
-      MapSet.difference(ids_before, ids_after)
-      |> Enum.map(fn id ->
-        {:delete, snapshot1[id]}
-      end)
+      Enum.reverse(inserts) |> Enum.concat(),
+      Enum.reverse(updates) |> Enum.concat(),
+      Enum.reverse(deletes) |> Enum.concat()
     ])
+  end
+
+  def get_primary_key!(schema) do
+    case schema.__schema__(:primary_key) do
+      [primary_key] ->
+        primary_key
+
+      _ ->
+        raise "schema does not have a primary key: #{schema} (schemas without primary key will be supported in a future version of DeltaCheck)"
+    end
   end
 
   def get_schemas(application) do
@@ -112,8 +98,10 @@ defmodule DeltaCheck do
   end
 
   def snapshot(opts \\ []) do
-    Keyword.get(opts, :schemas, Application.get_env(:delta_check, :schemas, []))
-    |> Enum.into(%{}, &{&1, get_entries(&1)})
+    Application.get_env(:delta_check, :snapshot_strategy, DeltaCheck.SnapshotStrategy.RepoAll).snapshot(
+      Application.fetch_env!(:delta_check, :repo),
+      Keyword.get(opts, :schemas, Application.get_env(:delta_check, :schemas, []))
+    )
   end
 
   def track_changes(fun, opts \\ []) do
@@ -124,20 +112,46 @@ defmodule DeltaCheck do
     {result, compare(before, snapshot(snapshot_opts))}
   end
 
-  defp get_entries(schema) do
-    primary_key =
-      case schema.__schema__(:primary_key) do
-        [primary_key] ->
-          primary_key
+  defp compare_schema(schema, snapshot1, snapshot2) do
+    ids_before = Map.keys(snapshot1) |> MapSet.new()
+    ids_after = Map.keys(snapshot2) |> MapSet.new()
 
-        _ ->
-          raise "schema does not have a primary key: #{schema} (schemas without primary key will be supported in a future version of DeltaCheck)"
-      end
+    %{
+      deletes:
+        MapSet.difference(ids_before, ids_after)
+        |> Enum.sort()
+        |> Enum.map(fn id ->
+          {:delete, snapshot1[id]}
+        end),
+      inserts:
+        MapSet.difference(ids_after, ids_before)
+        |> Enum.sort()
+        |> Enum.map(fn id ->
+          {:insert, snapshot2[id]}
+        end),
+      updates:
+        MapSet.intersection(ids_before, ids_after)
+        |> Enum.sort()
+        |> Enum.filter(fn id ->
+          snapshot1[id] != snapshot2[id]
+        end)
+        |> Enum.map(fn id ->
+          changed =
+            schema.__schema__(:fields)
+            |> Enum.filter(fn field ->
+              Map.get(snapshot1[id], field) != Map.get(snapshot2[id], field)
+            end)
 
-    from(schema, order_by: ^primary_key)
-    |> Application.fetch_env!(:delta_check, :repo).all()
-    |> Enum.into(%{}, fn entry ->
-      {Map.fetch!(entry, primary_key), entry}
-    end)
+          {
+            :update,
+            {
+              snapshot2[id],
+              Enum.map(changed, fn field ->
+                {field, {Map.get(snapshot1[id], field), Map.get(snapshot2[id], field)}}
+              end)
+            }
+          }
+        end)
+    }
   end
 end
