@@ -24,7 +24,7 @@ defmodule DeltaCheck.TestRepo.Migrations.All do
       add(:integer, :integer)
       add(:map, :map)
       add(:naive_datetime, :naive_datetime_usec)
-      add(:nil, :text)
+      add(:null, :text)
       add(:string, :string)
       add(:text, :text)
       add(:time, :time_usec)

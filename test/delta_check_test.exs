@@ -185,7 +185,7 @@ defmodule DeltaCheckTest do
           integer: 123,
           map: %{"array" => ["foo", "bar", "maz"], "map" => %{"key" => "value"}},
           naive_datetime: NaiveDateTime.new!(2021, 2, 3, 4, 5, 6, 7),
-          nil: nil,
+          null: nil,
           string: "foo",
           text: "bar",
           time: Time.new!(1, 2, 3, 4),
@@ -211,7 +211,7 @@ defmodule DeltaCheckTest do
                   integer: 123,
                   map: %{"array" => ["foo", "bar", "maz"], "map" => %{"key" => "value"}},
                   naive_datetime: NaiveDateTime.new!(2021, 2, 3, 4, 5, 6, 7),
-                  nil: nil,
+                  null: nil,
                   string: "foo",
                   text: "bar",
                   time: Time.new!(1, 2, 3, 4),
@@ -274,7 +274,8 @@ defmodule DeltaCheckTest do
     @tag :benchmark
     test "benchmark" do
       # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
-      schemas = for n <- 1..100, do: :"Elixir.DeltaCheck.TestSchemas.BenchmarkText#{n}"
+      schema_count = 100
+      schemas = for n <- 1..schema_count, do: :"Elixir.DeltaCheck.TestSchemas.BenchmarkText#{n}"
       text = for _ <- 1..1024, do: "a", into: ""
       texts = for _ <- 1..10, do: [text: text]
 
@@ -308,8 +309,8 @@ defmodule DeltaCheckTest do
       end)
 
       Benchee.run(%{
-        "100 schemas" => fn ->
-          assert snapshot(schemas: schemas) |> Enum.count() == 100
+        "#{schema_count} schemas" => fn ->
+          assert snapshot(schemas: schemas) |> Enum.count() == schema_count
         end
       })
 
