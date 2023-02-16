@@ -9,8 +9,7 @@ defmodule DeltaCheckTest do
   alias DeltaCheck.TestSchemas.Text
   alias DeltaCheck.TestSchemas.TextWithoutPrimaryKey
   alias DeltaCheck.TestSchemas.Type
-
-  doctest DeltaCheck
+  alias DeltaCheck.TestSchemas.User
 
   describe "assert_changes" do
     test "expected changes" do
@@ -216,7 +215,7 @@ defmodule DeltaCheckTest do
 
   describe "get_schemas" do
     test "application with schemas" do
-      assert get_schemas(:delta_check) == [OtherText, Text, Type]
+      assert get_schemas(:delta_check) == [OtherText, Text, Type, User]
     end
 
     test "application without schemas" do

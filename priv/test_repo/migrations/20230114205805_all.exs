@@ -30,5 +30,9 @@ defmodule DeltaCheck.TestRepo.Migrations.All do
       add(:time, :time_usec)
       add(:utc_datetime, :utc_datetime_usec)
     end
+
+    create table(:users) do
+      add(:name, :text, null: false)
+    end
   end
 end

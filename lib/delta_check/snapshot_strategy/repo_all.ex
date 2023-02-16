@@ -1,6 +1,7 @@
 defmodule DeltaCheck.SnapshotStrategy.RepoAll do
   @moduledoc """
-  TODO
+  The default snapshot strategy for DeltaCheck. This produces the snapshot by
+  running `Ecto.Repo.all` for all provided schemas.
   """
 
   @behaviour DeltaCheck.SnapshotStrategy
