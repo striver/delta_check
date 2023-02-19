@@ -28,6 +28,12 @@ defmodule DeltaCheck.MixProject do
       homepage_url: "https://github.com/striver/delta_check",
       name: "DeltaCheck",
       package: [
+        files: [
+          "LICENSE",
+          "lib",
+          "mix.exs",
+          "README.md"
+        ],
         licenses: ["MIT"],
         links: %{
           "GitHub" => "https://github.com/striver/delta_check",
