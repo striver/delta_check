@@ -12,6 +12,10 @@ defmodule DeltaCheck.MixProject do
       app: :delta_check,
       deps: deps(),
       description: "A testing toolkit for making assertions on database writes.",
+      dialyzer: [
+        plt_add_apps: [:ex_unit],
+        plt_file: {:no_warn, "priv/plts/dialyzer.plt"}
+      ],
       docs: [
         extras: [
           "LICENSE",
@@ -24,12 +28,12 @@ defmodule DeltaCheck.MixProject do
       homepage_url: "https://github.com/striver/delta_check",
       name: "DeltaCheck",
       package: [
-        maintainers: ["Andreas Geffen Lundahl"],
         licenses: ["MIT"],
         links: %{
           "GitHub" => "https://github.com/striver/delta_check",
           "Striver" => "https://striver.se"
-        }
+        },
+        maintainers: ["Andreas Geffen Lundahl"]
       ],
       source_url: "https://github.com/striver/delta_check",
       start_permanent: Mix.env() == :prod,
@@ -40,10 +44,10 @@ defmodule DeltaCheck.MixProject do
   defp deps do
     [
       {:benchee, "~> 1.1", only: :test},
-      {:credo, "~> 1.6", only: :dev, runtime: false},
-      {:dialyxir, "~> 1.2", only: :dev, runtime: false},
-      {:ex_doc, "~> 0.29", only: :dev, runtime: false},
+      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.2", only: [:dev, :test], runtime: false},
       {:ecto_sql, "~> 3.9", only: [:dev, :test]},
+      {:ex_doc, "~> 0.29", only: :dev, runtime: false},
       {:jason, "~> 1.4", only: [:dev, :test]},
       {:postgrex, "~> 0.16", only: [:dev, :test]},
       {:stream_data, "~> 0.5", only: [:dev, :test]}
