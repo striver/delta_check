@@ -23,7 +23,7 @@ defmodule DeltaCheck.MixProject do
         ],
         main: "readme"
       ],
-      elixir: "~> 1.14",
+      elixir: "~> 1.13",
       elixirc_paths: elixirc_paths(Mix.env()),
       homepage_url: "https://github.com/striver/delta_check",
       name: "DeltaCheck",

@@ -1,77 +1,12 @@
 env:
   MIX_ENV: "test"
 jobs:
-  install-dependencies:
-    runs-on: "ubuntu-latest"
-    steps:
-      - uses: "actions/checkout@v3"
-      - id: "setup-beam"
-        uses: "erlef/setup-beam@v1"
-        with:
-          elixir-version: "1.14"
-          otp-version: "25.1"
-      - id: "mix-cache"
-        uses: "actions/cache@v3"
-        with:
-          key: "${{ runner.os }}-${{ steps.setup-beam.outputs.otp-version }}-${{ steps.setup-beam.outputs.elixir-version }}-${{ hashFiles('mix.lock') }}"
-          path: |
-            deps
-            _build
-      - if: "steps.mix-cache.outputs.cache-hit != 'true'"
-        run: |
-          mix do local.hex --force, local.rebar --force, deps.get
-          mix compile
-  lint:
-    needs: "install-dependencies"
-    runs-on: "ubuntu-latest"
-    steps:
-      - uses: "actions/checkout@v3"
-      - id: "setup-beam"
-        uses: "erlef/setup-beam@v1"
-        with:
-          elixir-version: "1.14"
-          otp-version: "25.1"
-      - uses: "actions/cache@v3"
-        with:
-          key: "${{ runner.os }}-${{ steps.setup-beam.outputs.otp-version }}-${{ steps.setup-beam.outputs.elixir-version }}-${{ hashFiles('mix.lock') }}"
-          path: |
-            deps
-            _build
-      - run: "mix deps.unlock --check-unused"
-      - run: "mix credo suggest --strict"
-      - run: "mix format --check-formatted"
-  run-dialyzer:
-    needs: "install-dependencies"
-    runs-on: "ubuntu-latest"
-    steps:
-      - uses: "actions/checkout@v3"
-      - id: "setup-beam"
-        uses: "erlef/setup-beam@v1"
-        with:
-          elixir-version: "1.14"
-          otp-version: "25.1"
-      - uses: "actions/cache@v3"
-        with:
-          key: "${{ runner.os }}-${{ steps.setup-beam.outputs.otp-version }}-${{ steps.setup-beam.outputs.elixir-version }}-${{ hashFiles('mix.lock') }}"
-          path: |
-            deps
-            _build
-      - id: "plt-cache"
-        uses: "actions/cache@v3"
-        with:
-          key: "${{ runner.os }}-${{ steps.setup-beam.outputs.otp-version }}-${{ steps.setup-beam.outputs.elixir-version }}-plt"
-          path: |
-            priv/plts
-      - if: "steps.plt-cache.outputs.cache-hit != 'true'"
-        run: "mix dialyzer --plt"
-      - run: "mix dialyzer --format github"
-  test:
+  build:
     env:
       PGDATABASE: "delta_check"
       PGHOST: "localhost"
       PGPASSWORD: "password"
       PGUSER: "postgres"
-    needs: "install-dependencies"
     runs-on: "ubuntu-latest"
     services:
       postgres:
@@ -91,13 +26,35 @@ jobs:
       - id: "setup-beam"
         uses: "erlef/setup-beam@v1"
         with:
-          elixir-version: "1.14"
+          elixir-version: ${{ matrix.elixir }}
           otp-version: "25.1"
-      - uses: "actions/cache@v3"
+      - id: "mix-cache"
+        uses: "actions/cache@v3"
         with:
           key: "${{ runner.os }}-${{ steps.setup-beam.outputs.otp-version }}-${{ steps.setup-beam.outputs.elixir-version }}-${{ hashFiles('mix.lock') }}"
           path: |
             deps
             _build
+      - if: "steps.mix-cache.outputs.cache-hit != 'true'"
+        run: |
+          mix do local.hex --force, local.rebar --force, deps.get
+          mix compile
+      - if: matrix.elixir == '1.14.3'
+        run: "mix deps.unlock --check-unused"
+      - run: "mix credo suggest --strict"
+      - if: matrix.elixir == '1.14.3'
+        run: "mix format --check-formatted"
+      - id: "plt-cache"
+        uses: "actions/cache@v3"
+        with:
+          key: "${{ runner.os }}-${{ steps.setup-beam.outputs.otp-version }}-${{ steps.setup-beam.outputs.elixir-version }}-plt"
+          path: |
+            priv/plts
+      - if: "steps.plt-cache.outputs.cache-hit != 'true'"
+        run: "mix dialyzer --plt"
+      - run: "mix dialyzer --format github"
       - run: "mix test"
+    strategy:
+      matrix:
+        elixir: ["1.13.4", "1.14.3"]
 on: ["push"]

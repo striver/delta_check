@@ -1,4 +1,4 @@
-FROM elixir:1.14.2
+FROM elixir:1.14.3
 RUN apt-get update
 RUN apt-get install -y inotify-tools
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt bullseye-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
