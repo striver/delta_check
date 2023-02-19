@@ -43,8 +43,6 @@ import DeltaCheck
 
 ## Usage
 
-_For more examples and the rationale behind DeltaCheck, visit the [guide](GUIDE.md)._
-
 In your tests, you'll primarly use `DeltaCheck.assert_changes/3`, `DeltaCheck.assert_no_changes/2` and `DeltaCheck.track_changes/2`. Since both `assert_changes` and `assert_no_changes` are macros that build upon `track_changes`, let's start with an explanation of the latter.
 
 ### Deltas and `track_changes`

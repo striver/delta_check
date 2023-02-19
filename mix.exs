@@ -14,7 +14,6 @@ defmodule DeltaCheck.MixProject do
       description: "A testing toolkit for making assertions on database writes.",
       docs: [
         extras: [
-          "GUIDE.md",
           "LICENSE",
           "README.md"
         ],
